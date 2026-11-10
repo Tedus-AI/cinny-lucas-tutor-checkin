@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="./apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="家教打卡">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="家教打卡器">
@@ -54,6 +58,28 @@
         .no-scrollbar {
             -ms-overflow-style: none;
             scrollbar-width: none;
+        }
+        #modal-clear-makeup > div, #modal-add-absence > div, dialog {
+            max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+            overflow-y: auto;
+        }
+        @media (orientation: landscape) and (min-width: 560px) {
+            #app-shell, #app-shell > nav { max-width: 980px; }
+            #app-shell {
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+            }
+            #app-shell > nav {
+                padding-left: max(1rem, env(safe-area-inset-left));
+                padding-right: max(1rem, env(safe-area-inset-right));
+            }
+            .checkin-cards {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: .875rem;
+            }
+            .checkin-cards > * { margin-top: 0 !important; }
+            .checkin-cards > :first-child { grid-column: 1 / -1; }
         }
     </style>
 </head>
@@ -145,7 +171,7 @@
                 </div>
 
                 <!-- Today's Tutoring Check-in Cards -->
-                <div class="space-y-3.5">
+                <div class="checkin-cards space-y-3.5">
                     <div class="flex justify-between items-center px-1">
                         <h2 class="text-base font-black text-slate-800 flex items-center space-x-2">
                             <span>⚡ 今日家教上課打卡</span>
