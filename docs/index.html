@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="家教打卡器">
+    <title>Cinny & Lucas 家教打卡器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 20px);
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
+        body {
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            background-color: #f8fafc;
+            overscroll-behavior-y: none;
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .card-bounce {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+        }
+        .card-bounce:active {
+            transform: scale(0.96);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.85); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes pulseRing {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.5); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+        }
+        .pulse-badge {
+            animation: pulseRing 2s infinite;
+        }
+        /* Custom scrollbar hiding for clean iOS look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 flex justify-center items-start min-h-screen">
+
+    <!-- iOS Mobile Frame Container (Responsive full width on mobile, iPhone frame on desktop) -->
+    <div id="app-shell" class="w-full max-w-[430px] min-h-screen bg-slate-50 relative flex flex-col justify-between shadow-2xl overflow-x-hidden transition-colors duration-500">
+        
+        <!-- Dynamic Top Background Wave -->
+        <div id="header-bg" class="absolute top-0 left-0 right-0 h-72 bg-gradient-to-br from-pink-500 via-rose-400 to-orange-300 rounded-b-[42px] transition-all duration-500 z-0 shadow-lg"></div>
+
+        <!-- Top Content Area -->
+        <div class="relative z-10 px-5 pt-6 pb-28 flex-1 flex flex-col">
+            
+            <!-- Status Bar & Sync Indicator -->
+            <div class="flex justify-between items-center text-white/90 text-xs font-bold mb-4 px-1">
+                <div class="flex items-center space-x-2">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-300 animate-ping"></span>
+                    <span id="sync-status-text">雲端同步就緒</span>
+                </div>
+                <div class="flex items-center space-x-2 bg-black/15 px-3 py-1 rounded-full backdrop-blur-md">
+                    <i class="fa-regular fa-calendar"></i>
+                    <span id="current-date-display">載入中...</span>
+                </div>
+            </div>
+
+            <!-- Kid Profile Switcher (Cinny vs Lucas) -->
+            <div class="bg-white/20 p-1.5 rounded-2xl backdrop-blur-md flex space-x-2 mb-5 border border-white/30 shadow-inner">
+                <button onclick="switchKid('Cinny')" id="btn-kid-Cinny" class="flex-1 py-2.5 px-3 rounded-xl font-black text-sm flex items-center justify-center space-x-2 transition-all duration-300 bg-white text-pink-600 shadow-md">
+                    <span class="text-xl">👧🏻</span>
+                    <span>Cinny 女兒</span>
+                </button>
+                <button onclick="switchKid('Lucas')" id="btn-kid-Lucas" class="flex-1 py-2.5 px-3 rounded-xl font-black text-sm flex items-center justify-center space-x-2 transition-all duration-300 text-white hover:bg-white/10">
+                    <span class="text-xl">👦🏻</span>
+                    <span>Lucas 兒子</span>
+                </button>
+            </div>
+
+            <!-- Main Views Container -->
+            <div id="view-checkin" class="space-y-5 flex-1">
+                
+                <!-- Kid Hero Banner & Owed Makeup Counter -->
+                <div class="bg-white rounded-3xl p-5 shadow-xl border border-slate-100 relative overflow-hidden">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center space-x-3.5">
+                            <div id="kid-avatar-box" class="w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center text-4xl shadow-inner border-2 border-pink-200">
+                                👧🏻
+                            </div>
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <h1 id="kid-title" class="text-2xl font-black text-slate-800">Cinny</h1>
+                                    <span id="kid-badge" class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-600">每週6天課</span>
+                                </div>
+                                <p id="kid-subtitle" class="text-xs text-slate-500 mt-0.5 font-medium">今日進度：完成打卡拿星星 ✨</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-slate-400">本週累積出席</div>
+                            <div id="weekly-streak-count" class="text-2xl font-black text-emerald-500">0 <span class="text-xs font-bold text-slate-400">/ 12 堂</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Mini Debt Alert Summary inside Hero -->
+                    <div class="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-slate-500">待補課累計：</span>
+                            <span id="debt-pill-math" class="px-2.5 py-1 rounded-lg font-extrabold bg-slate-100 text-slate-600">數學 0 堂</span>
+                            <span id="debt-pill-eng" class="px-2.5 py-1 rounded-lg font-extrabold bg-slate-100 text-slate-600">英文 0 堂</span>
+                        </div>
+                        <button onclick="switchTab('makeup')" class="text-indigo-600 font-extrabold hover:underline flex items-center space-x-1">
+                            <span>去銷假</span>
+                            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Weekly 6-Day Progress Strip (Mon - Sat) -->
+                <div class="bg-white rounded-3xl p-4 shadow-md border border-slate-100">
+                    <div class="flex justify-between items-center mb-3 px-1">
+                        <div class="flex items-center space-x-1.5">
+                            <i class="fa-solid fa-calendar-week text-indigo-500 text-sm"></i>
+                            <h2 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">本週六天上課狀態 (週一至週六)</h2>
+                        </div>
+                        <span id="week-range-label" class="text-[11px] font-bold text-slate-400"></span>
+                    </div>
+                    <div id="week-grid" class="grid grid-cols-6 gap-2">
+                        <!-- Dynamically populated Mon-Sat pills -->
+                    </div>
+                </div>
+
+                <!-- Today's Tutoring Check-in Cards -->
+                <div class="space-y-3.5">
+                    <div class="flex justify-between items-center px-1">
+                        <h2 class="text-base font-black text-slate-800 flex items-center space-x-2">
+                            <span>⚡ 今日家教上課打卡</span>
+                        </h2>
+                        <span id="sunday-tag" class="hidden text-xs font-bold bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full">週日公休 / 自由補課日</span>
+                    </div>
+
+                    <!-- English Tutor Card -->
+                    <div class="bg-white rounded-3xl p-5 shadow-md border-2 border-transparent transition-all duration-300 relative overflow-hidden" id="card-eng">
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center text-2xl shadow-md">
+                                    🔤
+                                </div>
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <h3 class="text-lg font-black text-slate-800">英文家教課</h3>
+                                        <span id="status-badge-eng" class="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500">尚未打卡</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 font-medium mt-0.5" id="time-log-eng">今日上課時間開啟 APP 點擊簽到</p>
+                                </div>
+                            </div>
+                            <!-- Quick Makeup Counter Badge -->
+                            <div id="debt-corner-eng" class="hidden bg-rose-50 border border-rose-200 text-rose-600 px-2.5 py-1 rounded-xl text-center">
+                                <div class="text-[10px] font-bold leading-tight">缺勤待補</div>
+                                <div class="text-sm font-black leading-tight" id="debt-num-eng">0</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-3 gap-2.5" id="actions-eng">
+                            <button onclick="handleCheckIn('eng', 'present')" class="col-span-2 card-bounce py-3.5 px-4 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black text-sm shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-circle-check text-base"></i>
+                                <span>開始上課打卡！</span>
+                            </button>
+                            <button onclick="handleCheckIn('eng', 'absent')" class="card-bounce py-3.5 px-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold text-xs border border-rose-200 flex items-center justify-center space-x-1">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span>今日缺勤</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Math Tutor Card -->
+                    <div class="bg-white rounded-3xl p-5 shadow-md border-2 border-transparent transition-all duration-300 relative overflow-hidden" id="card-math">
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center text-2xl shadow-md">
+                                    📐
+                                </div>
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <h3 class="text-lg font-black text-slate-800">數學家教課</h3>
+                                        <span id="status-badge-math" class="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500">尚未打卡</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 font-medium mt-0.5" id="time-log-math">今日上課時間開啟 APP 點擊簽到</p>
+                                </div>
+                            </div>
+                            <!-- Quick Makeup Counter Badge -->
+                            <div id="debt-corner-math" class="hidden bg-rose-50 border border-rose-200 text-rose-600 px-2.5 py-1 rounded-xl text-center">
+                                <div class="text-[10px] font-bold leading-tight">缺勤待補</div>
+                                <div class="text-sm font-black leading-tight" id="debt-num-math">0</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-3 gap-2.5" id="actions-math">
+                            <button onclick="handleCheckIn('math', 'present')" class="col-span-2 card-bounce py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-sm shadow-lg shadow-orange-200 flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-circle-check text-base"></i>
+                                <span>開始上課打卡！</span>
+                            </button>
+                            <button onclick="handleCheckIn('math', 'absent')" class="card-bounce py-3.5 px-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold text-xs border border-rose-200 flex items-center justify-center space-x-1">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span>今日缺勤</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Auto-Absence Detection Notice -->
+                <div class="bg-indigo-50/80 border border-indigo-100 rounded-2xl p-3.5 flex items-start space-x-3 text-xs text-indigo-900">
+                    <i class="fa-solid fa-robot text-indigo-500 text-base mt-0.5"></i>
+                    <div class="leading-relaxed">
+                        <span class="font-extrabold">智慧缺勤統計：</span>每週一至週六為固定家教日。若過去的上課日忘記打卡，系統會自動標記為「缺勤未打卡」並計入待補課時數，也可隨時在補課中心當場銷掉紀錄！
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: MAKEUP CLASS & CLEARANCE CENTER (補課銷假中心) -->
+            <div id="view-makeup" class="space-y-5 flex-1 hidden">
+                <div class="bg-white rounded-3xl p-5 shadow-xl border border-slate-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h2 class="text-xl font-black text-slate-800 flex items-center space-x-2">
+                                <span>🔄 補課與當場銷假中心</span>
+                            </h2>
+                            <p class="text-xs text-slate-500 mt-0.5">當前學生：<strong id="makeup-kid-name" class="text-indigo-600">Cinny</strong></p>
+                        </div>
+                        <button onclick="openManualAbsenceModal()" class="card-bounce text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-200 px-3 py-2 rounded-xl flex items-center space-x-1">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>手動記缺勤</span>
+                        </button>
+                    </div>
+
+                    <!-- Summary Cards for English & Math Debt -->
+                    <div class="grid grid-cols-2 gap-3 mt-4">
+                        <!-- English Debt Box -->
+                        <div class="bg-violet-50/70 border border-violet-200 rounded-2xl p-4 flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-extrabold text-violet-700">🔤 英文待補課</span>
+                                    <span class="text-[10px] font-bold bg-violet-200/70 text-violet-800 px-2 py-0.5 rounded-full" id="cleared-total-eng">已銷 0 堂</span>
+                                </div>
+                                <div class="my-3 flex items-baseline space-x-1">
+                                    <span id="makeup-count-eng" class="text-4xl font-black text-violet-700">0</span>
+                                    <span class="text-xs font-bold text-violet-500">堂缺勤</span>
+                                </div>
+                            </div>
+                            <button onclick="openClearModal('eng')" id="btn-clear-eng" class="w-full card-bounce py-2.5 px-3 rounded-xl bg-violet-600 text-white font-black text-xs shadow-md shadow-violet-200 disabled:opacity-40 disabled:pointer-events-none">
+                                ⚡ 當場補課銷紀錄
+                            </button>
+                        </div>
+
+                        <!-- Math Debt Box -->
+                        <div class="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-extrabold text-amber-800">📐 數學待補課</span>
+                                    <span class="text-[10px] font-bold bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full" id="cleared-total-math">已銷 0 堂</span>
+                                </div>
+                                <div class="my-3 flex items-baseline space-x-1">
+                                    <span id="makeup-count-math" class="text-4xl font-black text-amber-600">0</span>
+                                    <span class="text-xs font-bold text-amber-600">堂缺勤</span>
+                                </div>
+                            </div>
+                            <button onclick="openClearModal('math')" id="btn-clear-math" class="w-full card-bounce py-2.5 px-3 rounded-xl bg-amber-500 text-white font-black text-xs shadow-md shadow-amber-200 disabled:opacity-40 disabled:pointer-events-none">
+                                ⚡ 當場補課銷紀錄
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Unresolved Absence List (Can clear specific dates or batch clear) -->
+                <div class="bg-white rounded-3xl p-5 shadow-md border border-slate-100">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-black text-slate-800 flex items-center space-x-1.5">
+                            <i class="fa-solid fa-clipboard-list text-rose-500"></i>
+                            <span>待補課缺勤明細 (點擊可直接單堂銷帳)</span>
+                        </h3>
+                    </div>
+                    <div id="absence-list-container" class="space-y-2.5 max-h-80 overflow-y-auto no-scrollbar">
+                        <!-- Dynamically populated unresolved absences -->
+                    </div>
+                </div>
+
+                <!-- Recently Cleared History -->
+                <div class="bg-white rounded-3xl p-5 shadow-md border border-slate-100">
+                    <h3 class="text-sm font-black text-slate-800 flex items-center space-x-1.5 mb-3">
+                        <i class="fa-solid fa-award text-emerald-500"></i>
+                        <span>近期已銷假補課紀錄</span>
+                    </h3>
+                    <div id="makeup-history-container" class="space-y-2 max-h-56 overflow-y-auto no-scrollbar text-xs">
+                        <!-- Dynamically populated cleared history -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 3: HISTORY & CALENDAR LOGS (完整歷史紀錄與補登) -->
+            <div id="view-history" class="space-y-5 flex-1 hidden">
+                <div class="bg-white rounded-3xl p-5 shadow-xl border border-slate-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 class="text-xl font-black text-slate-800">📅 打卡與歷史日誌</h2>
+                            <p class="text-xs text-slate-500">可切換過去日期補打卡或調整狀態</p>
+                        </div>
+                        <input type="date" id="history-date-picker" onchange="renderHistoryDateEditor()" class="text-xs font-bold bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Selected Date Editor Box -->
+                    <div id="history-date-editor" class="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Full Activity Stream -->
+                <div class="bg-white rounded-3xl p-5 shadow-md border border-slate-100">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-black text-slate-800">📊 近期所有打卡與異動紀錄</h3>
+                        <button onclick="exportDataJSON()" class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg hover:bg-indigo-100">
+                            <i class="fa-solid fa-download mr-1"></i>匯出備份
+                        </button>
+                    </div>
+                    <div id="all-logs-container" class="space-y-2.5 max-h-96 overflow-y-auto no-scrollbar">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 4: CLOUDFLARE & GITHUB DEPLOYMENT / SYNC (雲端設定與部署) -->
+            <div id="view-cloud" class="space-y-5 flex-1 hidden">
+                <div class="bg-white rounded-3xl p-5 shadow-xl border border-slate-100 space-y-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center text-2xl">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-black text-slate-800">Cloudflare 後台與 GitHub 部署</h2>
+                            <p class="text-xs text-slate-500">家庭紀錄儲存在 Cloudflare D1</p>
+                        </div>
+                    </div>
+
+<p id="cloud-status">請登入以同步家庭紀錄。</p><button class="rounded-xl bg-orange-500 p-3 text-white" onclick="saveStateToCloud()">重新儲存</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bottom iOS Tab Navigation Bar -->
+        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/90 ios-blur border-t border-slate-200/80 px-4 py-2 pb-[calc(0.5rem+var(--safe-bottom))] z-30 flex justify-around items-center shadow-[0_-8px_30px_rgb(0,0,0,0.06)]">
+            <button onclick="switchTab('checkin')" id="tab-btn-checkin" class="flex flex-col items-center py-1 px-3 rounded-2xl text-pink-600 transition-all">
+                <i class="fa-solid fa-circle-check text-xl mb-0.5"></i>
+                <span class="text-[11px] font-extrabold">今日打卡</span>
+            </button>
+            <button onclick="switchTab('makeup')" id="tab-btn-makeup" class="relative flex flex-col items-center py-1 px-3 rounded-2xl text-slate-400 hover:text-slate-600 transition-all">
+                <i class="fa-solid fa-rotate-left text-xl mb-0.5"></i>
+                <span class="text-[11px] font-extrabold">補課銷假</span>
+                <span id="nav-debt-badge" class="hidden absolute top-0.5 right-2 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center pulse-badge">0</span>
+            </button>
+            <button onclick="switchTab('history')" id="tab-btn-history" class="flex flex-col items-center py-1 px-3 rounded-2xl text-slate-400 hover:text-slate-600 transition-all">
+                <i class="fa-solid fa-calendar-days text-xl mb-0.5"></i>
+                <span class="text-[11px] font-extrabold">紀錄與補登</span>
+            </button>
+            <button onclick="switchTab('cloud')" id="tab-btn-cloud" class="flex flex-col items-center py-1 px-3 rounded-2xl text-slate-400 hover:text-slate-600 transition-all">
+                <i class="fa-solid fa-cloud text-xl mb-0.5"></i>
+                <span class="text-[11px] font-extrabold">雲端後台</span>
+            </button>
+        </nav>
+
+        <!-- MODAL 1: Instant Clear Makeup Modal (當場銷掉補課紀錄) -->
+        <div id="modal-clear-makeup" class="fixed inset-0 bg-slate-900/60 ios-blur z-50 hidden flex items-center justify-center p-5">
+            <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-pop space-y-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2.5">
+                        <div id="modal-subject-icon" class="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center text-xl">🔤</div>
+                        <div>
+                            <h3 class="text-lg font-black text-slate-800" id="modal-clear-title">補課當場銷帳</h3>
+                            <p class="text-xs text-slate-400" id="modal-clear-subtitle">已完成補課，立即抵銷缺勤紀錄</p>
+                        </div>
+                    </div>
+                    <button onclick="closeClearModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- How many classes to clear selector -->
+                <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center space-y-2">
+                    <div class="text-xs font-bold text-slate-500">本次已完成幾堂補課？（當場銷掉）</div>
+                    <div class="flex items-center justify-center space-x-5 py-2">
+                        <button onclick="adjustClearCount(-1)" class="w-11 h-11 rounded-2xl bg-white border border-slate-200 shadow text-slate-700 font-black text-xl active:scale-90 transition">-</button>
+                        <div class="text-4xl font-black text-indigo-600 w-16" id="clear-amount-display">1</div>
+                        <button onclick="adjustClearCount(1)" class="w-11 h-11 rounded-2xl bg-white border border-slate-200 shadow text-slate-700 font-black text-xl active:scale-90 transition">+</button>
+                    </div>
+                    <div class="text-[11px] font-bold text-slate-400" id="clear-max-hint">目前最多可銷 1 堂</div>
+                </div>
+
+                <!-- Optional Note -->
+                <div>
+                    <label class="text-xs font-extrabold text-slate-600 block mb-1">補課備註 (選填)</label>
+                    <input type="text" id="clear-note-input" placeholder="例如：週日加課補完、多上1小時..." class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="flex space-x-2.5 pt-2">
+                    <button onclick="closeClearModal()" class="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 font-extrabold text-xs">取消</button>
+                    <button onclick="confirmClearMakeup()" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-xs shadow-lg shadow-emerald-200">
+                        ✨ 確認當場銷掉紀錄
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 2: Manual Add Absence Modal -->
+        <div id="modal-add-absence" class="fixed inset-0 bg-slate-900/60 ios-blur z-50 hidden flex items-center justify-center p-5">
+            <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-pop space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-black text-slate-800">➕ 手動新增待補課堂數</h3>
+                    <button onclick="closeManualAbsenceModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500">若有過去未記錄到的請假或缺勤，可在此直接增加待補課次數：</p>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button onclick="selectManualSubject('eng')" id="manual-sub-eng" class="p-3 rounded-2xl border-2 border-violet-500 bg-violet-50 text-violet-700 font-black text-xs flex flex-col items-center space-y-1">
+                        <span class="text-xl">🔤</span>
+                        <span>英文家教</span>
+                    </button>
+                    <button onclick="selectManualSubject('math')" id="manual-sub-math" class="p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs flex flex-col items-center space-y-1">
+                        <span class="text-xl">📐</span>
+                        <span>數學家教</span>
+                    </button>
+                </div>
+                <div>
+                    <label class="text-xs font-extrabold text-slate-600 block mb-1">缺勤原因或日期備註</label>
+                    <input type="text" id="manual-absence-reason" placeholder="例如：上週四生病請假、家庭旅遊" class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50">
+                </div>
+                <div class="flex space-x-2.5 pt-2">
+                    <button onclick="closeManualAbsenceModal()" class="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 font-extrabold text-xs">取消</button>
+                    <button onclick="confirmManualAbsence()" class="flex-1 py-3 rounded-2xl bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-200">
+                        計入待補課 (+1)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast-box" class="fixed top-12 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-all duration-300 transform -translate-y-3">
+            <div class="bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-extrabold flex items-center space-x-2 border border-white/10">
+                <span id="toast-icon">✅</span>
+                <span id="toast-msg">打卡成功！</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDK for Instant Cloud Persistence + Cloudflare Sync Bridge -->
+    <script type="module">
+        // ==========================================
+        // STATE & DATA STRUCTURE FOR CINNY & LUCAS
+        // ==========================================
+        const SUBJECT_NAMES = { eng: '英文家教', math: '數學家教' };
+        let currentKid = 'Cinny'; // 'Cinny' or 'Lucas'
+        let currentTab = 'checkin';
+        let clearModalSubject = 'eng';
+        let clearModalAmount = 1;
+        let clearModalMax = 1;
+        let manualSubject = 'eng';
+
+        // Default initial state structure
+        let appState = {
+            kids: {
+                Cinny: {
+                    // Format: 'YYYY-MM-DD': { eng: { status: 'present'|'absent', time: '16:30', cleared: false }, math: { ... } }
+                    attendance: {},
+                    // Extra manual absences or auto-logged items that need makeup
+                    manualDebts: [], // [{ id, subject: 'eng'|'math', date, reason, cleared: false, clearedAt: null }]
+                    // Makeup clearance log
+                    makeupHistory: [], // [{ id, subject: 'eng'|'math', count, date, time, note }]
+                    clearedCount: { eng: 0, math: 0 }
+                },
+                Lucas: {
+                    attendance: {},
+                    manualDebts: [],
+                    makeupHistory: [],
+                    clearedCount: { eng: 0, math: 0 }
+                }
+            }
+        };
+
+        // Helper: Format local date YYYY-MM-DD
+        function formatDateKey(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function formatTimeStr(dateObj) {
+            return `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        }
+
+        const todayObj = new Date();
+        const todayKey = formatDateKey(todayObj);
+
+        // ==========================================
+        // AUTO-ABSENCE CHECKER (Mon-Sat 6 Days Rule)
+        // ==========================================
+        // Checks the current week's passed days (Monday up to Yesterday).
+        // If a scheduled day (Mon-Sat) has no record for a subject, automatically mark it as 'absent' (auto-detected) so it counts toward makeup!
+        function runSixDayAutoAbsenceCheck() {
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+            // Find Monday of current week
+            const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + diffToMonday);
+            monday.setHours(0, 0, 0, 0);
+
+            const todayMidnight = new Date(now);
+            todayMidnight.setHours(0, 0, 0, 0);
+
+            let stateChanged = false;
+
+            ['Cinny', 'Lucas'].forEach(kid => {
+                const kidData = appState.kids[kid];
+                // Loop from Monday (0) to Saturday (5)
+                for (let i = 0; i < 6; i++) {
+                    const checkDate = new Date(monday);
+                    checkDate.setDate(monday.getDate() + i);
+                    // Only auto-mark days strictly BEFORE today
+                    if (checkDate < todayMidnight) {
+                        const dKey = formatDateKey(checkDate);
+                        if (!kidData.attendance[dKey]) {
+                            kidData.attendance[dKey] = {};
+                        }
+                        ['eng', 'math'].forEach(sub => {
+                            if (!kidData.attendance[dKey][sub]) {
+                                kidData.attendance[dKey][sub] = {
+                                    status: 'absent',
+                                    time: '未打卡自動記缺勤',
+                                    autoMarked: true,
+                                    cleared: false
+                                };
+                                stateChanged = true;
+                            }
+                        });
+                    }
+                }
+            });
+
+            return stateChanged;
+        }
+
+        // ==========================================
+        // CALCULATE UNRESOLVED ABSENCES (DEBT)
+        // ==========================================
+        function getUnresolvedAbsences(kid, subject) {
+            const kidData = appState.kids[kid];
+            const list = [];
+
+            // 1. From daily attendance records where status === 'absent' and !cleared
+            Object.keys(kidData.attendance).sort().reverse().forEach(dateKey => {
+                const rec = kidData.attendance[dateKey]?.[subject];
+                if (rec && rec.status === 'absent' && !rec.cleared) {
+                    list.push({
+                        type: 'daily',
+                        id: dateKey,
+                        date: dateKey,
+                        subject,
+                        reason: rec.autoMarked ? '當日未打卡 (系統計缺勤)' : '當日請假 / 缺勤',
+                        time: rec.time
+                    });
+                }
+            });
+
+            // 2. From manualDebts where subject matches and !cleared
+            (kidData.manualDebts || []).forEach(item => {
+                if (item.subject === subject && !item.cleared) {
+                    list.push({
+                        type: 'manual',
+                        id: item.id,
+                        date: item.date,
+                        subject,
+                        reason: item.reason || '手動登記缺勤',
+                        time: '手動新增'
+                    });
+                }
+            });
+
+            return list;
+        }
+
+        // ==========================================
+        // CLOUD PERSISTENCE (Firestore + Cloudflare Worker)
+        // ==========================================
+        const endpoint = 'https://cinny-lucas-tutor-checkin.tedus-ai-games.workers.dev/api/sync';
+        const escapeText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+        let accessKey = '', revision = 0, ready = false, conflict = false;
+        let saveQueue = Promise.resolve();
+
+        async function sync(method, data) {
+            const response = await fetch(endpoint, {
+                method,
+                headers: {Authorization: 'Bearer ' + accessKey, ...(data ? {'Content-Type':'application/json'} : {})},
+                body: data ? JSON.stringify(data) : undefined,
+                signal: AbortSignal.timeout(15000)
+            });
+            if (!response.ok) throw Object.assign(new Error('同步失敗'), {status:response.status});
+            return response.json();
+        }
+
+        function initCloudSync() {
+            const dialog = document.createElement('dialog');
+            dialog.className = 'm-auto rounded-2xl p-6 shadow-xl';
+            dialog.innerHTML = '<form class="space-y-3"><h2 class="font-bold">家教打卡器登入</h2><label>家用存取碼 <input class="border rounded p-2" type="password" required autocomplete="current-password"></label><p role="status"></p><button class="rounded bg-indigo-600 text-white p-2">登入</button></form>';
+            document.body.append(dialog);
+            dialog.addEventListener('cancel', event => event.preventDefault());
+            dialog.showModal();
+            const form = dialog.querySelector('form');
+            form.onsubmit = async event => {
+                event.preventDefault();
+                const button = form.querySelector('button');
+                button.disabled = true;
+                accessKey = form.querySelector('input').value.trim();
+                try {
+                    const saved = await sync('GET');
+                    if (saved.state) appState = saved.state;
+                    revision = saved.revision;
+                    runSixDayAutoAbsenceCheck();
+                    renderAll();
+                    ready = true;
+                    updateSyncIndicator('Cloudflare 已連線');
+                    dialog.close();
+                    dialog.remove();
+                } catch (error) {
+                    accessKey = '';
+                    form.querySelector('p').textContent = error.status === 401 ? '存取碼不正確' : '無法連線，請稍後重試';
+                } finally { button.disabled = false; }
+            };
+        }
+
+        window.saveStateToCloud = saveStateToCloud;
+        function saveStateToCloud() {
+            renderAll();
+            if (!ready || conflict) return;
+            const state = JSON.parse(JSON.stringify(appState));
+            updateSyncIndicator('同步儲存中…');
+            saveQueue = saveQueue.then(async () => {
+                if (conflict) return;
+                try {
+                    const saved = await sync('PUT', {state, revision});
+                    revision = saved.revision;
+                    updateSyncIndicator('Cloudflare 已儲存');
+                } catch (error) {
+                    conflict = error.status === 409;
+                    updateSyncIndicator(conflict ? '另一台裝置已更新。請先下載備份，再重新登入。' : '尚未儲存。請到雲端頁重新儲存。');
+                }
+            });
+        }
+
+        function updateSyncIndicator(text, ok) {
+            const el = document.getElementById('sync-status-text');
+            if (el) el.textContent = text;
+            document.getElementById('cloud-status').textContent = text;
+        }
+
+        // ==========================================
+        // UI RENDERING LOGIC
+        // ==========================================
+        function renderAll() {
+            renderHeaderAndTheme();
+            renderWeeklyStrip();
+            renderTodayCards();
+            renderMakeupCenter();
+            renderHistoryView();
+        }
+
+        function renderHeaderAndTheme() {
+            const daysZH = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+            const m = todayObj.getMonth() + 1;
+            const d = todayObj.getDate();
+            const w = daysZH[todayObj.getDay()];
+            document.getElementById('current-date-display').textContent = `${m}月${d}日 (${w})`;
+
+            const headerBg = document.getElementById('header-bg');
+            const btnCinny = document.getElementById('btn-kid-Cinny');
+            const btnLucas = document.getElementById('btn-kid-Lucas');
+            const avatarBox = document.getElementById('kid-avatar-box');
+            const kidTitle = document.getElementById('kid-title');
+            const kidBadge = document.getElementById('kid-badge');
+
+            if (currentKid === 'Cinny') {
+                headerBg.className = 'absolute top-0 left-0 right-0 h-72 bg-gradient-to-br from-pink-500 via-rose-400 to-orange-300 rounded-b-[42px] transition-all duration-500 z-0 shadow-lg';
+                btnCinny.className = 'flex-1 py-2.5 px-3 rounded-xl font-black text-sm flex items-center justify-center space-x-2 transition-all duration-300 bg-white text-pink-600 shadow-md';
+                btnLucas.className = 'flex-1 py-2.5 px-3 rounded-xl font-black text-sm flex items-center justify-center space-x-2 transition-all duration-300 text-white hover:bg-white/10';
+                avatarBox.textContent = '👧🏻';
+                avatarBox.className = 'w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center text-4xl shadow-inner border-2 border-pink-200';
+                kidTitle.textContent = 'Cinny';
+                kidBadge.className = 'text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-600';
+            } else {
+                headerBg.className = 'absolute top-0 left-0 right-0 h-72 bg-gradient-to-br from-blue-600 via-indigo-500 to-cyan-400 rounded-b-[42px] transition-all duration-500 z-0 shadow-lg';
+                btnLucas.className = 'flex-1 py-2.5 px-3 rounded-xl font-black text-sm flex items-center justify-center space-x-2 transition-all duration-300 bg-white text-blue-600 shadow-md';
+                btnCinny.className = 'flex-1 py-2.5 px-3 rounded-xl font-black text-sm flex items-center justify-center space-x-2 transition-all duration-300 text-white hover:bg-white/10';
+                avatarBox.textContent = '👦🏻';
+                avatarBox.className = 'w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center text-4xl shadow-inner border-2 border-blue-200';
+                kidTitle.textContent = 'Lucas';
+                kidBadge.className = 'text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-600';
+            }
+
+            // Debt summary pills
+            const engDebts = getUnresolvedAbsences(currentKid, 'eng').length;
+            const mathDebts = getUnresolvedAbsences(currentKid, 'math').length;
+            const totalDebts = engDebts + mathDebts;
+
+            const pillMath = document.getElementById('debt-pill-math');
+            const pillEng = document.getElementById('debt-pill-eng');
+            pillEng.textContent = `英文待補 ${engDebts} 堂`;
+            pillEng.className = engDebts > 0
+                ? 'px-2.5 py-1 rounded-lg font-extrabold bg-rose-100 text-rose-600'
+                : 'px-2.5 py-1 rounded-lg font-extrabold bg-emerald-50 text-emerald-600';
+
+            pillMath.textContent = `數學待補 ${mathDebts} 堂`;
+            pillMath.className = mathDebts > 0
+                ? 'px-2.5 py-1 rounded-lg font-extrabold bg-rose-100 text-rose-600'
+                : 'px-2.5 py-1 rounded-lg font-extrabold bg-emerald-50 text-emerald-600';
+
+            // Bottom Nav Badge
+            const navBadge = document.getElementById('nav-debt-badge');
+            if (totalDebts > 0) {
+                navBadge.textContent = totalDebts;
+                navBadge.classList.remove('hidden');
+            } else {
+                navBadge.classList.add('hidden');
+            }
+
+            // Update active tab styling
+            const activeColor = currentKid === 'Cinny' ? 'text-pink-600' : 'text-blue-600';
+            ['checkin', 'makeup', 'history', 'cloud'].forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (btn) {
+                    btn.className = t === currentTab
+                        ? `relative flex flex-col items-center py-1 px-3 rounded-2xl ${activeColor} transition-all scale-105`
+                        : `relative flex flex-col items-center py-1 px-3 rounded-2xl text-slate-400 hover:text-slate-600 transition-all`;
+                }
+            });
+        }
+
+        function renderWeeklyStrip() {
+            const now = new Date();
+            const dayOfWeek = now.getDay();
+            const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + diffToMonday);
+
+            const saturday = new Date(monday);
+            saturday.setDate(monday.getDate() + 5);
+            document.getElementById('week-range-label').textContent = `${monday.getMonth()+1}/${monday.getDate()} - ${saturday.getMonth()+1}/${saturday.getDate()}`;
+
+            const dayNames = ['週一', '週二', '週三', '週四', '週五', '週六'];
+            const grid = document.getElementById('week-grid');
+            grid.innerHTML = '';
+
+            let weeklyPresentCount = 0;
+            const kidAttendance = appState.kids[currentKid].attendance;
+
+            for (let i = 0; i < 6; i++) {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                const dKey = formatDateKey(d);
+                const isToday = dKey === todayKey;
+                const rec = kidAttendance[dKey] || {};
+
+                const engStatus = rec.eng?.status;
+                const mathStatus = rec.math?.status;
+
+                if (engStatus === 'present') weeklyPresentCount++;
+                if (mathStatus === 'present') weeklyPresentCount++;
+
+                const renderDot = (status, cleared) => {
+                    if (status === 'present') return `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" title="已到課"></span>`;
+                    if (status === 'absent' && cleared) return `<span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" title="已補課銷假"></span>`;
+                    if (status === 'absent') return `<span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" title="缺勤待補"></span>`;
+                    return `<span class="w-2.5 h-2.5 rounded-full bg-slate-200 inline-block" title="未打卡"></span>`;
+                };
+
+                const box = document.createElement('button');
+                box.onclick = () => {
+                    document.getElementById('history-date-picker').value = dKey;
+                    switchTab('history');
+                    renderHistoryDateEditor();
+                };
+                box.className = `flex flex-col items-center p-2 rounded-2xl border transition-all ${
+                    isToday
+                        ? 'bg-indigo-50/90 border-indigo-400 shadow-sm scale-105'
+                        : 'bg-slate-50/70 border-slate-100 hover:bg-slate-100'
+                }`;
+                box.innerHTML = `
+                    <span class="text-[10px] font-extrabold ${isToday ? 'text-indigo-600' : 'text-slate-400'}">${dayNames[i]}</span>
+                    <span class="text-xs font-black text-slate-700 my-1">${d.getDate()}</span>
+                    <div class="flex space-x-1 mt-0.5">
+                        ${renderDot(engStatus, rec.eng?.cleared)}
+                        ${renderDot(mathStatus, rec.math?.cleared)}
+                    </div>
+                `;
+                grid.appendChild(box);
+            }
+
+            document.getElementById('weekly-streak-count').innerHTML = `${weeklyPresentCount} <span class="text-xs font-bold text-slate-400">/ 12 堂</span>`;
+        }
+
+        function renderTodayCards() {
+            const isSunday = todayObj.getDay() === 0;
+            const sundayTag = document.getElementById('sunday-tag');
+            if (isSunday) {
+                sundayTag.classList.remove('hidden');
+            } else {
+                sundayTag.classList.add('hidden');
+            }
+
+            const todayRec = appState.kids[currentKid].attendance[todayKey] || {};
+
+            ['eng', 'math'].forEach(sub => {
+                const subRec = todayRec[sub];
+                const card = document.getElementById(`card-${sub}`);
+                const badge = document.getElementById(`status-badge-${sub}`);
+                const timeLog = document.getElementById(`time-log-${sub}`);
+                const actions = document.getElementById(`actions-${sub}`);
+                const debtCorner = document.getElementById(`debt-corner-${sub}`);
+                const debtNum = document.getElementById(`debt-num-${sub}`);
+
+                const unresolvedCount = getUnresolvedAbsences(currentKid, sub).length;
+                if (unresolvedCount > 0) {
+                    debtCorner.classList.remove('hidden');
+                    debtNum.textContent = `${unresolvedCount} 堂`;
+                } else {
+                    debtCorner.classList.add('hidden');
+                }
+
+                if (subRec && subRec.status === 'present') {
+                    card.className = 'bg-emerald-50/40 rounded-3xl p-5 shadow-md border-2 border-emerald-400 transition-all duration-300 relative overflow-hidden';
+                    badge.className = 'text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500 text-white';
+                    badge.innerHTML = '<i class="fa-solid fa-check mr-1"></i>今日已打卡上課';
+                    timeLog.textContent = `打卡時間：今日 ${subRec.time}`;
+                    actions.innerHTML = `
+                        <div class="col-span-2 py-3 px-4 rounded-2xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-star text-amber-500"></i>
+                            <span>今日${SUBJECT_NAMES[sub]}已完成簽到！</span>
+                        </div>
+                        <button onclick="resetTodaySub('${sub}')" class="py-3 px-3 rounded-2xl bg-white text-slate-400 hover:text-slate-600 font-bold text-xs border border-slate-200">
+                            重設
+                        </button>
+                    `;
+                } else if (subRec && subRec.status === 'absent') {
+                    card.className = 'bg-rose-50/40 rounded-3xl p-5 shadow-md border-2 border-rose-300 transition-all duration-300 relative overflow-hidden';
+                    badge.className = 'text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-500 text-white';
+                    badge.innerHTML = subRec.cleared ? '已補課銷假' : '今日缺勤 (已計入待補)';
+                    timeLog.textContent = `登記時間：${subRec.time}`;
+                    actions.innerHTML = `
+                        <button onclick="switchTab('makeup')" class="col-span-2 card-bounce py-3 px-4 rounded-2xl bg-rose-600 text-white font-black text-xs flex items-center justify-center space-x-1.5 shadow">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>前往補課銷假中心</span>
+                        </button>
+                        <button onclick="resetTodaySub('${sub}')" class="py-3 px-3 rounded-2xl bg-white text-slate-500 font-bold text-xs border border-slate-200">
+                            改為出席
+                        </button>
+                    `;
+                } else {
+                    card.className = 'bg-white rounded-3xl p-5 shadow-md border-2 border-transparent transition-all duration-300 relative overflow-hidden';
+                    badge.className = 'text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500';
+                    badge.textContent = '今日尚未打卡';
+                    timeLog.textContent = '上課時打開 APP 點擊下方按鈕簽到';
+                    const btnGradient = sub === 'eng'
+                        ? 'from-violet-600 to-indigo-600 shadow-indigo-200'
+                        : 'from-amber-500 to-orange-500 shadow-orange-200';
+                    actions.innerHTML = `
+                        <button onclick="handleCheckIn('${sub}', 'present')" class="col-span-2 card-bounce py-3.5 px-4 rounded-2xl bg-gradient-to-r ${btnGradient} text-white font-black text-sm shadow-lg flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-circle-check text-base"></i>
+                            <span>開始上課打卡！</span>
+                        </button>
+                        <button onclick="handleCheckIn('${sub}', 'absent')" class="card-bounce py-3.5 px-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold text-xs border border-rose-200 flex items-center justify-center space-x-1">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>今日缺勤</span>
+                        </button>
+                    `;
+                }
+            });
+        }
+
+        function renderMakeupCenter() {
+            document.getElementById('makeup-kid-name').textContent = currentKid;
+            const kidData = appState.kids[currentKid];
+
+            const engList = getUnresolvedAbsences(currentKid, 'eng');
+            const mathList = getUnresolvedAbsences(currentKid, 'math');
+
+            document.getElementById('makeup-count-eng').textContent = engList.length;
+            document.getElementById('makeup-count-math').textContent = mathList.length;
+
+            document.getElementById('cleared-total-eng').textContent = `累計已銷 ${kidData.clearedCount?.eng || 0} 堂`;
+            document.getElementById('cleared-total-math').textContent = `累計已銷 ${kidData.clearedCount?.math || 0} 堂`;
+
+            document.getElementById('btn-clear-eng').disabled = engList.length === 0;
+            document.getElementById('btn-clear-math').disabled = mathList.length === 0;
+
+            // Render Unresolved List
+            const combinedAbsences = [...engList, ...mathList].sort((a, b) => b.date.localeCompare(a.date));
+            const listEl = document.getElementById('absence-list-container');
+
+            if (combinedAbsences.length === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center py-8 bg-emerald-50/50 rounded-2xl border border-dashed border-emerald-200">
+                        <div class="text-3xl mb-1">🎉</div>
+                        <div class="text-sm font-black text-emerald-700">${currentKid} 目前沒有任何欠課！</div>
+                        <div class="text-xs text-emerald-500">所有家教課程皆準時出席或已補課完畢</div>
+                    </div>
+                `;
+            } else {
+                listEl.innerHTML = combinedAbsences.map(item => {
+                    const isEng = item.subject === 'eng';
+                    return `
+                        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-xl ${isEng ? 'bg-violet-100 text-violet-600' : 'bg-amber-100 text-amber-600'} flex items-center justify-center text-lg font-bold">
+                                    ${isEng ? '🔤' : '📐'}
+                                </div>
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs font-black text-slate-800">${SUBJECT_NAMES[item.subject]}</span>
+                                        <span class="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">${item.date}</span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-400 mt-0.5">${escapeText(item.reason)}</div>
+                                </div>
+                            </div>
+                            <button onclick="clearSingleAbsence('${item.type}', '${item.id}', '${item.subject}')" class="card-bounce px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs shadow-sm flex items-center space-x-1">
+                                <i class="fa-solid fa-check"></i>
+                                <span>當場銷掉</span>
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Render Makeup History
+            const histEl = document.getElementById('makeup-history-container');
+            const hist = kidData.makeupHistory || [];
+            if (hist.length === 0) {
+                histEl.innerHTML = `<div class="text-center py-4 text-slate-400">尚無補課銷假紀錄</div>`;
+            } else {
+                histEl.innerHTML = hist.slice(0, 15).map(h => `
+                    <div class="flex justify-between items-center p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-base">${h.subject === 'eng' ? '🔤' : '📐'}</span>
+                            <div>
+                                <div class="font-extrabold text-slate-700">${SUBJECT_NAMES[h.subject]} 銷假 <span class="text-emerald-600 font-black">-${h.count} 堂</span></div>
+                                <div class="text-[10px] text-slate-400">${escapeText(h.note || '完成補課當場銷帳')}</div>
+                            </div>
+                        </div>
+                        <div class="text-[10px] font-bold text-slate-400 text-right">
+                            <div>${h.date}</div>
+                            <div>${h.time}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderHistoryView() {
+            const picker = document.getElementById('history-date-picker');
+            if (!picker.value) {
+                picker.value = todayKey;
+            }
+            renderHistoryDateEditor();
+
+            // Render stream of all logs for currentKid
+            const kidData = appState.kids[currentKid];
+            const dates = Object.keys(kidData.attendance).sort().reverse();
+            const logsEl = document.getElementById('all-logs-container');
+
+            if (dates.length === 0) {
+                logsEl.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">尚無歷史紀錄</div>`;
+                return;
+            }
+
+            logsEl.innerHTML = dates.slice(0, 20).map(dKey => {
+                const r = kidData.attendance[dKey];
+                const renderPill = (sub) => {
+                    const s = r[sub];
+                    if (!s) return `<span class="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-400">${SUBJECT_NAMES[sub]}: 未紀錄</span>`;
+                    if (s.status === 'present') return `<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">✅ ${SUBJECT_NAMES[sub]} (${s.time})</span>`;
+                    if (s.cleared) return `<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">🔄 ${SUBJECT_NAMES[sub]} (缺勤已補)</span>`;
+                    return `<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-600">❌ ${SUBJECT_NAMES[sub]} (缺勤待補)</span>`;
+                };
+                return `
+                    <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                        <div class="text-xs font-black text-slate-700">${dKey}</div>
+                        <div class="flex flex-wrap gap-1.5 justify-end">
+                            ${renderPill('eng')}
+                            ${renderPill('math')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.renderHistoryDateEditor = function() {
+            const picker = document.getElementById('history-date-picker');
+            const selectedDate = picker.value || todayKey;
+            const kidData = appState.kids[currentKid];
+            const rec = kidData.attendance[selectedDate] || {};
+
+            const container = document.getElementById('history-date-editor');
+            container.innerHTML = `
+                <div class="text-xs font-extrabold text-slate-600 mb-2">正在檢視 / 補登日期：<span class="text-indigo-600">${selectedDate}</span> (${currentKid})</div>
+                <div class="grid grid-cols-1 gap-2.5">
+                    ${['eng', 'math'].map(sub => {
+                        const s = rec[sub];
+                        const stText = !s ? '未打卡' : (s.status === 'present' ? '✅ 已出席' : (s.cleared ? '🔄 缺勤已補課' : '❌ 缺勤待補課'));
+                        return `
+                            <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-black text-slate-800">${sub === 'eng' ? '🔤 英文家教' : '📐 數學家教'}</div>
+                                    <div class="text-[11px] font-bold text-slate-500 mt-0.5">狀態：${stText}</div>
+                                </div>
+                                <div class="flex space-x-1.5">
+                                    <button onclick="setHistoricalStatus('${selectedDate}', '${sub}', 'present')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-200">設為出席</button>
+                                    <button onclick="setHistoricalStatus('${selectedDate}', '${sub}', 'absent')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-rose-50 text-rose-600 border border-rose-200">記缺勤</button>
+                                    <button onclick="setHistoricalStatus('${selectedDate}', '${sub}', 'clear')" class="px-2 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500">清除</button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        };
+
+        // ==========================================
+        // USER INTERACTION HANDLERS
+        // ==========================================
+        window.switchKid = function(kidName) {
+            currentKid = kidName;
+            renderAll();
+            showToast(`👦🏻👧🏻 已切換至 ${kidName} 的課表`);
+        };
+
+        window.switchTab = function(tabName) {
+            currentTab = tabName;
+            ['checkin', 'makeup', 'history', 'cloud'].forEach(t => {
+                const el = document.getElementById(`view-${t}`);
+                if (t === tabName) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            });
+            renderAll();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.handleCheckIn = function(subject, status) {
+            const kidData = appState.kids[currentKid];
+            if (!kidData.attendance[todayKey]) {
+                kidData.attendance[todayKey] = {};
+            }
+            const nowStr = formatTimeStr(new Date());
+            kidData.attendance[todayKey][subject] = {
+                status: status,
+                time: nowStr,
+                autoMarked: false,
+                cleared: false
+            };
+
+            if (status === 'present') {
+                showToast(`🎉 ${currentKid} 完成${SUBJECT_NAMES[subject]}打卡！`);
+            } else {
+                showToast(`⚠️ 已登記今日${SUBJECT_NAMES[subject]}缺勤，計入待補課 +1`);
+            }
+            saveStateToCloud();
+        };
+
+        window.resetTodaySub = function(subject) {
+            const kidData = appState.kids[currentKid];
+            if (kidData.attendance[todayKey]) {
+                delete kidData.attendance[todayKey][subject];
+                saveStateToCloud();
+                showToast('已重設今日打卡狀態');
+            }
+        };
+
+        window.setHistoricalStatus = function(dateKey, subject, action) {
+            const kidData = appState.kids[currentKid];
+            if (!kidData.attendance[dateKey]) kidData.attendance[dateKey] = {};
+
+            if (action === 'clear') {
+                delete kidData.attendance[dateKey][subject];
+                showToast(`已清除 ${dateKey} ${SUBJECT_NAMES[subject]}紀錄`);
+            } else {
+                kidData.attendance[dateKey][subject] = {
+                    status: action,
+                    time: action === 'present' ? '家長補登出席' : '家長補記缺勤',
+                    autoMarked: false,
+                    cleared: false
+                };
+                showToast(`已更新 ${dateKey} 狀態`);
+            }
+            saveStateToCloud();
+        };
+
+        // ==========================================
+        // MAKEUP CLEARANCE (當場銷假邏輯)
+        // ==========================================
+        window.clearSingleAbsence = function(type, id, subject) {
+            const kidData = appState.kids[currentKid];
+            if (type === 'daily') {
+                if (kidData.attendance[id] && kidData.attendance[id][subject]) {
+                    kidData.attendance[id][subject].cleared = true;
+                }
+            } else {
+                const item = (kidData.manualDebts || []).find(d => d.id === id);
+                if (item) item.cleared = true;
+            }
+
+            if (!kidData.clearedCount) kidData.clearedCount = { eng: 0, math: 0 };
+            kidData.clearedCount[subject] = (kidData.clearedCount[subject] || 0) + 1;
+
+            kidData.makeupHistory.unshift({
+                id: 'mk_' + Date.now(),
+                subject,
+                count: 1,
+                date: todayKey,
+                time: formatTimeStr(new Date()),
+                note: `當場銷掉 ${id} 缺勤紀錄`
+            });
+
+            saveStateToCloud();
+            showToast(`✨ 已當場銷掉 1 堂${SUBJECT_NAMES[subject]}缺勤！`);
+        };
+
+        window.openClearModal = function(subject) {
+            clearModalSubject = subject;
+            const unresolved = getUnresolvedAbsences(currentKid, subject);
+            clearModalMax = unresolved.length;
+            if (clearModalMax === 0) return;
+
+            clearModalAmount = 1;
+            document.getElementById('modal-subject-icon').textContent = subject === 'eng' ? '🔤' : '📐';
+            document.getElementById('modal-clear-title').textContent = `${ currentKid } - ${SUBJECT_NAMES[subject]}補課銷帳`;
+            document.getElementById('clear-amount-display').textContent = clearModalAmount;
+            document.getElementById('clear-max-hint').textContent = `目前待補 ${clearModalMax} 堂，可一次銷掉多堂`;
+            document.getElementById('clear-note-input').value = '';
+            document.getElementById('modal-clear-makeup').classList.remove('hidden');
+        };
+
+        window.closeClearModal = function() {
+            document.getElementById('modal-clear-makeup').classList.add('hidden');
+        };
+
+        window.adjustClearCount = function(delta) {
+            const next = clearModalAmount + delta;
+            if (next >= 1 && next <= clearModalMax) {
+                clearModalAmount = next;
+                document.getElementById('clear-amount-display').textContent = clearModalAmount;
+            }
+        };
+
+        window.confirmClearMakeup = function() {
+            const unresolved = getUnresolvedAbsences(currentKid, clearModalSubject);
+            const toClear = unresolved.slice(0, clearModalAmount);
+            const kidData = appState.kids[currentKid];
+            const note = document.getElementById('clear-note-input').value.trim() || '完成補課當場銷掉紀錄';
+
+            toClear.forEach(item => {
+                if (item.type === 'daily') {
+                    if (kidData.attendance[item.id] && kidData.attendance[item.id][clearModalSubject]) {
+                        kidData.attendance[item.id][clearModalSubject].cleared = true;
+                    }
+                } else {
+                    const found = (kidData.manualDebts || []).find(d => d.id === item.id);
+                    if (found) found.cleared = true;
+                }
+            });
+
+            if (!kidData.clearedCount) kidData.clearedCount = { eng: 0, math: 0 };
+            kidData.clearedCount[clearModalSubject] = (kidData.clearedCount[clearModalSubject] || 0) + toClear.length;
+
+            kidData.makeupHistory.unshift({
+                id: 'mk_' + Date.now(),
+                subject: clearModalSubject,
+                count: toClear.length,
+                date: todayKey,
+                time: formatTimeStr(new Date()),
+                note: note
+            });
+
+            closeClearModal();
+            saveStateToCloud();
+            showToast(`🎉 成功當場銷掉 ${toClear.length} 堂${SUBJECT_NAMES[clearModalSubject]}缺勤！`);
+        };
+
+        // Manual Absence Modal
+        window.openManualAbsenceModal = function() {
+            manualSubject = 'eng';
+            selectManualSubject('eng');
+            document.getElementById('manual-absence-reason').value = '';
+            document.getElementById('modal-add-absence').classList.remove('hidden');
+        };
+
+        window.closeManualAbsenceModal = function() {
+            document.getElementById('modal-add-absence').classList.add('hidden');
+        };
+
+        window.selectManualSubject = function(sub) {
+            manualSubject = sub;
+            const btnEng = document.getElementById('manual-sub-eng');
+            const btnMath = document.getElementById('manual-sub-math');
+            if (sub === 'eng') {
+                btnEng.className = 'p-3 rounded-2xl border-2 border-violet-500 bg-violet-50 text-violet-700 font-black text-xs flex flex-col items-center space-y-1';
+                btnMath.className = 'p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs flex flex-col items-center space-y-1';
+            } else {
+                btnMath.className = 'p-3 rounded-2xl border-2 border-amber-500 bg-amber-50 text-amber-700 font-black text-xs flex flex-col items-center space-y-1';
+                btnEng.className = 'p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs flex flex-col items-center space-y-1';
+            }
+        };
+
+        window.confirmManualAbsence = function() {
+            const reason = document.getElementById('manual-absence-reason').value.trim() || '手動登記缺勤';
+            const kidData = appState.kids[currentKid];
+            if (!kidData.manualDebts) kidData.manualDebts = [];
+            kidData.manualDebts.unshift({
+                id: 'debt_' + Date.now(),
+                subject: manualSubject,
+                date: todayKey,
+                reason: reason,
+                cleared: false
+            });
+            closeManualAbsenceModal();
+            saveStateToCloud();
+            showToast(`已為 ${currentKid} 新增 1 堂${SUBJECT_NAMES[manualSubject]}待補課`);
+        };
+
+        // ==========================================
+        // CLOUDFLARE WORKER & EXPORT TOOLS
+        // ==========================================
+        window.exportDataJSON = function() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `Cinny_Lucas_家教打卡備份_${todayKey}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            showToast('📦 備份檔案已下載');
+        };
+
+        // Toast Helper
+        let toastTimer = null;
+        function showToast(msg) {
+            const box = document.getElementById('toast-box');
+            const text = document.getElementById('toast-msg');
+            text.textContent = msg;
+            box.classList.remove('opacity-0', '-translate-y-3');
+            box.classList.add('opacity-100', 'translate-y-0');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                box.classList.add('opacity-0', '-translate-y-3');
+                box.classList.remove('opacity-100', 'translate-y-0');
+            }, 2600);
+        }
+
+        // Start App on Window Load
+        window.addEventListener('DOMContentLoaded', () => {
+            initCloudSync();
+        });
+    </script>
+</body>
+</html>
