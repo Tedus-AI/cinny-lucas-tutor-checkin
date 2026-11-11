@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-    <link rel="icon" type="image/png" href="./apple-touch-icon.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="家教打卡">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=2">
+    <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="家教打卡器">
+    <meta name="apple-mobile-web-app-title" content="家教打卡">
+    <meta name="theme-color" content="#ec4899">
     <title>Cinny & Lucas 家教打卡器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
@@ -380,14 +380,54 @@
                         </div>
                     </div>
 
-<p id="cloud-status">請登入以同步家庭紀錄。</p><button class="rounded-xl bg-orange-500 p-3 text-white" onclick="saveStateToCloud()">重新儲存</button>
+<p id="cloud-status">正在連線雲端…</p><button class="rounded-xl bg-orange-500 p-3 text-white" onclick="saveStateToCloud()">重新儲存</button>
+                </div>
+            </div>
+
+            <!-- VIEW 5: CLASS TIMER (上課計時器) -->
+            <div id="view-timer" class="space-y-5 flex-1 hidden">
+                <div class="bg-white rounded-3xl p-5 shadow-xl border border-slate-100 space-y-5">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl">⏰</div>
+                        <div>
+                            <h2 class="text-lg font-black text-slate-800">上課計時器</h2>
+                            <p class="text-xs text-slate-500">選好時間按開始，時間到自動響下課鐘</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-100 p-1.5 rounded-2xl flex space-x-2">
+                        <button onclick="setTimerDuration(30)" id="timer-opt-30" class="flex-1 py-2.5 rounded-xl font-black text-sm transition-all">半小時 30 分</button>
+                        <button onclick="setTimerDuration(60)" id="timer-opt-60" class="flex-1 py-2.5 rounded-xl font-black text-sm transition-all">一小時 60 分</button>
+                    </div>
+
+                    <div class="relative mx-auto w-60 h-60">
+                        <svg viewBox="0 0 200 200" class="w-full h-full -rotate-90">
+                            <circle cx="100" cy="100" r="88" fill="none" stroke="#f1f5f9" stroke-width="14"/>
+                            <circle id="timer-ring" cx="100" cy="100" r="88" fill="none" stroke="#f43f5e" stroke-width="14" stroke-linecap="round" stroke-dasharray="552.92" stroke-dashoffset="0" style="transition: stroke-dashoffset .3s linear, stroke .3s"/>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <div id="timer-display" class="text-6xl font-black text-slate-800 tabular-nums tracking-tight">30:00</div>
+                            <div id="timer-state-label" class="mt-1 text-xs font-extrabold text-slate-400">準備上課</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="toggleTimer()" id="timer-main-btn" class="card-bounce py-3.5 rounded-2xl bg-rose-500 text-white font-black text-base shadow-md shadow-rose-200">▶ 開始上課</button>
+                        <button onclick="resetTimer()" class="card-bounce py-3.5 rounded-2xl bg-slate-100 text-slate-600 font-black text-base">↺ 重設</button>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs font-bold">
+                        <span id="timer-awake-status" class="text-slate-400">💡 計時中螢幕會保持常亮</span>
+                        <button onclick="previewBell()" class="text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">🔔 試聽鐘聲</button>
+                    </div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">提醒：iPhone 請關閉「靜音模式」並調高音量；計時中請保持本頁開啟（可切換其他分頁，畫面下方會常駐顯示倒數）。</p>
                 </div>
             </div>
 
         </div>
 
         <!-- Bottom iOS Tab Navigation Bar -->
-        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/90 ios-blur border-t border-slate-200/80 px-4 py-2 pb-[calc(0.5rem+var(--safe-bottom))] z-30 flex justify-around items-center shadow-[0_-8px_30px_rgb(0,0,0,0.06)]">
+        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/90 ios-blur border-t border-slate-200/80 px-2 py-2 pb-[calc(0.5rem+var(--safe-bottom))] z-30 flex justify-around items-center shadow-[0_-8px_30px_rgb(0,0,0,0.06)]">
             <button onclick="switchTab('checkin')" id="tab-btn-checkin" class="flex flex-col items-center py-1 px-3 rounded-2xl text-pink-600 transition-all">
                 <i class="fa-solid fa-circle-check text-xl mb-0.5"></i>
                 <span class="text-[11px] font-extrabold">今日打卡</span>
@@ -401,11 +441,34 @@
                 <i class="fa-solid fa-calendar-days text-xl mb-0.5"></i>
                 <span class="text-[11px] font-extrabold">紀錄與補登</span>
             </button>
+            <button onclick="switchTab('timer')" id="tab-btn-timer" class="relative flex flex-col items-center py-1 px-2 rounded-2xl text-slate-400 hover:text-slate-600 transition-all">
+                <i class="fa-solid fa-stopwatch text-xl mb-0.5"></i>
+                <span class="text-[11px] font-extrabold">上課計時</span>
+            </button>
             <button onclick="switchTab('cloud')" id="tab-btn-cloud" class="flex flex-col items-center py-1 px-3 rounded-2xl text-slate-400 hover:text-slate-600 transition-all">
                 <i class="fa-solid fa-cloud text-xl mb-0.5"></i>
                 <span class="text-[11px] font-extrabold">雲端後台</span>
             </button>
         </nav>
+
+
+        <!-- Floating mini timer (常駐倒數) -->
+        <button id="timer-float" onclick="switchTab('timer')" class="hidden fixed left-1/2 -translate-x-1/2 bottom-[calc(4.75rem+var(--safe-bottom))] z-40 items-center space-x-2 px-4 py-2 rounded-full bg-slate-900/90 ios-blur text-white font-black shadow-xl">
+            <span id="timer-float-icon">⏰</span>
+            <span id="timer-float-text" class="tabular-nums text-lg">30:00</span>
+            <span id="timer-float-label" class="text-[11px] text-white/70">上課中</span>
+        </button>
+
+        <!-- Class over overlay (下課囉) -->
+        <div id="timer-done-overlay" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-6 bg-gradient-to-br from-amber-400/95 via-orange-400/95 to-rose-500/95">
+            <div class="text-center text-white space-y-5 animate-pop">
+                <div class="text-8xl">🔔</div>
+                <h2 class="text-4xl font-black">下課囉！</h2>
+                <p id="timer-done-sub" class="font-bold text-white/90">辛苦了，休息一下吧 ✨</p>
+                <button onclick="dismissTimerDone()" class="card-bounce px-8 py-3.5 rounded-2xl bg-white text-rose-600 font-black text-lg shadow-xl">停止鐘聲</button>
+            </div>
+        </div>
+        <video id="keep-awake-video" src="./keep-awake.mp4" muted loop playsinline webkit-playsinline preload="auto" aria-hidden="true" style="position:fixed;width:1px;height:1px;left:0;bottom:0;opacity:0.01;pointer-events:none"></video>
 
         <!-- MODAL 1: Instant Clear Makeup Modal (當場銷掉補課紀錄) -->
         <div id="modal-clear-makeup" class="fixed inset-0 bg-slate-900/60 ios-blur z-50 hidden flex items-center justify-center p-5">
@@ -634,13 +697,13 @@
         // ==========================================
         const endpoint = 'https://cinny-lucas-tutor-checkin.tedus-ai-games.workers.dev/api/sync';
         const escapeText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-        let accessKey = '', revision = 0, ready = false, conflict = false;
+        let revision = 0, ready = false, conflict = false;
         let saveQueue = Promise.resolve();
 
         async function sync(method, data) {
             const response = await fetch(endpoint, {
                 method,
-                headers: {Authorization: 'Bearer ' + accessKey, ...(data ? {'Content-Type':'application/json'} : {})},
+                headers: data ? {'Content-Type':'application/json'} : {},
                 body: data ? JSON.stringify(data) : undefined,
                 signal: AbortSignal.timeout(15000)
             });
@@ -648,34 +711,20 @@
             return response.json();
         }
 
-        function initCloudSync() {
-            const dialog = document.createElement('dialog');
-            dialog.className = 'm-auto rounded-2xl p-6 shadow-xl';
-            dialog.innerHTML = '<form class="space-y-3"><h2 class="font-bold">家教打卡器登入</h2><label>家用存取碼 <input class="border rounded p-2" type="password" required autocomplete="current-password"></label><p role="status"></p><button class="rounded bg-indigo-600 text-white p-2">登入</button></form>';
-            document.body.append(dialog);
-            dialog.addEventListener('cancel', event => event.preventDefault());
-            dialog.showModal();
-            const form = dialog.querySelector('form');
-            form.onsubmit = async event => {
-                event.preventDefault();
-                const button = form.querySelector('button');
-                button.disabled = true;
-                accessKey = form.querySelector('input').value.trim();
-                try {
-                    const saved = await sync('GET');
-                    if (saved.state) appState = saved.state;
-                    revision = saved.revision;
-                    runSixDayAutoAbsenceCheck();
-                    renderAll();
-                    ready = true;
-                    updateSyncIndicator('Cloudflare 已連線');
-                    dialog.close();
-                    dialog.remove();
-                } catch (error) {
-                    accessKey = '';
-                    form.querySelector('p').textContent = error.status === 401 ? '存取碼不正確' : '無法連線，請稍後重試';
-                } finally { button.disabled = false; }
-            };
+        async function initCloudSync() {
+            updateSyncIndicator('正在連線雲端…');
+            try {
+                const saved = await sync('GET');
+                if (saved.state) appState = saved.state;
+                revision = saved.revision;
+                ready = true;
+                runSixDayAutoAbsenceCheck();
+                renderAll();
+                updateSyncIndicator('Cloudflare 已連線');
+            } catch (error) {
+                renderAll();
+                updateSyncIndicator('無法連線雲端，請稍後重新整理');
+            }
         }
 
         window.saveStateToCloud = saveStateToCloud;
@@ -692,7 +741,7 @@
                     updateSyncIndicator('Cloudflare 已儲存');
                 } catch (error) {
                     conflict = error.status === 409;
-                    updateSyncIndicator(conflict ? '另一台裝置已更新。請先下載備份，再重新登入。' : '尚未儲存。請到雲端頁重新儲存。');
+                    updateSyncIndicator(conflict ? '另一台裝置已更新。請先下載備份，再重新整理頁面。' : '尚未儲存。請到雲端頁重新儲存。');
                 }
             });
         }
@@ -712,6 +761,7 @@
             renderTodayCards();
             renderMakeupCenter();
             renderHistoryView();
+            renderTimer();
         }
 
         function renderHeaderAndTheme() {
@@ -774,12 +824,12 @@
 
             // Update active tab styling
             const activeColor = currentKid === 'Cinny' ? 'text-pink-600' : 'text-blue-600';
-            ['checkin', 'makeup', 'history', 'cloud'].forEach(t => {
+            ['checkin', 'makeup', 'history', 'timer', 'cloud'].forEach(t => {
                 const btn = document.getElementById(`tab-btn-${t}`);
                 if (btn) {
                     btn.className = t === currentTab
-                        ? `relative flex flex-col items-center py-1 px-3 rounded-2xl ${activeColor} transition-all scale-105`
-                        : `relative flex flex-col items-center py-1 px-3 rounded-2xl text-slate-400 hover:text-slate-600 transition-all`;
+                        ? `relative flex flex-col items-center py-1 px-2 rounded-2xl ${activeColor} transition-all scale-105`
+                        : `relative flex flex-col items-center py-1 px-2 rounded-2xl text-slate-400 hover:text-slate-600 transition-all`;
                 }
             });
         }
@@ -1083,7 +1133,7 @@
 
         window.switchTab = function(tabName) {
             currentTab = tabName;
-            ['checkin', 'makeup', 'history', 'cloud'].forEach(t => {
+            ['checkin', 'makeup', 'history', 'timer', 'cloud'].forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (t === tabName) el.classList.remove('hidden');
                 else el.classList.add('hidden');
@@ -1287,6 +1337,264 @@
             showToast('📦 備份檔案已下載');
         };
 
+        // ==========================================
+        // CLASS TIMER (上課計時器 + 下課鐘聲 + 螢幕常亮)
+        // ==========================================
+        const TIMER_KEY = 'tutorClassTimer';
+        const RING_LEN = 552.92;
+        // status: 'idle' | 'running' | 'paused' | 'done'
+        let timer = { minutes: 30, status: 'idle', endAt: 0, remainingMs: 30 * 60000 };
+        try {
+            const saved = JSON.parse(localStorage.getItem(TIMER_KEY) || 'null');
+            if (saved && [30, 60].includes(saved.minutes)) timer = { ...timer, ...saved };
+        } catch {}
+        let timerTick = null, wakeLock = null, audioCtx = null, keepAliveNode = null, bellNodes = [], bellStopTimer = null;
+
+        function saveTimer() {
+            try { localStorage.setItem(TIMER_KEY, JSON.stringify(timer)); } catch {}
+        }
+        function timerRemainingMs() {
+            if (timer.status === 'running') return Math.max(0, timer.endAt - Date.now());
+            if (timer.status === 'done') return 0;
+            return timer.remainingMs;
+        }
+        function fmtClock(ms) {
+            const total = Math.ceil(ms / 1000);
+            return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+        }
+
+        // ---------- Audio: Westminster school bell, synthesised (no file needed) ----------
+        function ensureAudio() {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return null;
+            // iOS 17+: let the bell play even when the ring/silent switch is on
+            try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+            if (!audioCtx) audioCtx = new Ctx();
+            if (audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+            // A silent, always-on node keeps iOS from suspending the context during a long lesson
+            if (!keepAliveNode) {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                g.gain.value = 0;
+                osc.connect(g).connect(audioCtx.destination);
+                osc.start();
+                keepAliveNode = osc;
+            }
+            return audioCtx;
+        }
+        function bellNote(ctx, freq, t, dur) {
+            const master = ctx.createGain();
+            master.gain.setValueAtTime(0.0001, t);
+            master.gain.exponentialRampToValueAtTime(0.5, t + 0.01);
+            master.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+            master.connect(ctx.destination);
+            // Bell-like inharmonic partials
+            [[1, 1], [2, 0.5], [2.76, 0.3], [4.07, 0.18], [5.4, 0.1], [0.5, 0.25]].forEach(([ratio, amp]) => {
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.type = 'sine';
+                o.frequency.value = freq * ratio;
+                g.gain.setValueAtTime(amp, t);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + dur / (ratio > 2 ? 2.2 : 1));
+                o.connect(g).connect(master);
+                o.start(t);
+                o.stop(t + dur + 0.05);
+                bellNodes.push(o);
+            });
+        }
+        function playSchoolBell(rounds = 2) {
+            const ctx = ensureAudio();
+            if (!ctx) return 0;
+            stopBell();
+            const E = 659.25, C = 523.25, D = 587.33, G = 392.0;
+            // 噹噹噹噹：Mi Do Re Sol｜Sol Re Mi Do｜Mi Re Do Sol｜Sol Re Mi Do
+            const phrases = [[E, C, D, G], [G, D, E, C], [E, D, C, G], [G, D, E, C]];
+            const step = 0.62, gap = 0.55;
+            let t = ctx.currentTime + 0.08;
+            for (let r = 0; r < rounds; r++) {
+                phrases.forEach((ph, i) => {
+                    ph.forEach((f, j) => {
+                        const last = j === ph.length - 1;
+                        bellNote(ctx, f, t, last ? 2.4 : 1.6);
+                        t += last ? step + gap : step;
+                    });
+                });
+                t += 0.8;
+            }
+            const totalMs = (t - ctx.currentTime) * 1000 + 1500;
+            bellStopTimer = setTimeout(() => { bellNodes = []; }, totalMs);
+            return totalMs;
+        }
+        function stopBell() {
+            clearTimeout(bellStopTimer);
+            bellNodes.forEach(o => { try { o.stop(); } catch {} });
+            bellNodes = [];
+        }
+        window.previewBell = function() {
+            if (bellNodes.length) { stopBell(); return; }
+            playSchoolBell(1);
+            showToast('🔔 試聽下課鐘聲（再按一次停止）');
+        };
+
+        // ---------- Keep screen awake ----------
+        async function acquireWakeLock() {
+            const video = document.getElementById('keep-awake-video');
+            // Fallback for older iOS / home-screen mode: a muted inline looping video prevents auto-lock
+            if (video) video.play().catch(() => {});
+            if ('wakeLock' in navigator && !wakeLock) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => { wakeLock = null; });
+                } catch { wakeLock = null; }
+            }
+            updateAwakeStatus();
+        }
+        function releaseWakeLock() {
+            const video = document.getElementById('keep-awake-video');
+            if (video) video.pause();
+            if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+            updateAwakeStatus();
+        }
+        function updateAwakeStatus() {
+            const el = document.getElementById('timer-awake-status');
+            if (!el) return;
+            if (timer.status === 'running') {
+                el.textContent = '💡 螢幕常亮中';
+                el.className = 'text-emerald-600';
+            } else {
+                el.textContent = '💡 計時中螢幕會保持常亮';
+                el.className = 'text-slate-400';
+            }
+        }
+
+        // ---------- Timer control ----------
+        window.setTimerDuration = function(min) {
+            if (timer.status === 'running' || timer.status === 'paused') {
+                showToast('計時進行中，請先按「重設」再更改時間');
+                return;
+            }
+            timer = { minutes: min, status: 'idle', endAt: 0, remainingMs: min * 60000 };
+            saveTimer();
+            renderTimer();
+        };
+        window.toggleTimer = function() {
+            ensureAudio(); // must be unlocked inside a user tap on iOS
+            if (timer.status === 'running') {
+                timer.remainingMs = timerRemainingMs();
+                timer.status = 'paused';
+                releaseWakeLock();
+                showToast('⏸ 已暫停計時');
+            } else {
+                if (timer.status === 'done' || timer.status === 'idle') timer.remainingMs = timer.minutes * 60000;
+                timer.endAt = Date.now() + timer.remainingMs;
+                timer.status = 'running';
+                acquireWakeLock();
+                showToast(`⏰ 開始上課！${timer.minutes} 分鐘後響下課鐘`);
+            }
+            saveTimer();
+            startTimerTick();
+            renderTimer();
+        };
+        window.resetTimer = function() {
+            stopBell();
+            releaseWakeLock();
+            timer = { minutes: timer.minutes, status: 'idle', endAt: 0, remainingMs: timer.minutes * 60000 };
+            saveTimer();
+            document.getElementById('timer-done-overlay').classList.add('hidden');
+            renderTimer();
+        };
+        window.dismissTimerDone = function() {
+            stopBell();
+            document.getElementById('timer-done-overlay').classList.add('hidden');
+            window.resetTimer();
+        };
+        function finishTimer(withBell) {
+            timer.status = 'done';
+            timer.remainingMs = 0;
+            saveTimer();
+            releaseWakeLock();
+            if (withBell) playSchoolBell(2);
+            if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]);
+            document.getElementById('timer-done-overlay').classList.remove('hidden');
+            renderTimer();
+        }
+        function startTimerTick() {
+            clearInterval(timerTick);
+            timerTick = setInterval(() => {
+                if (timer.status === 'running' && timerRemainingMs() <= 0) finishTimer(true);
+                renderTimer();
+                if (timer.status !== 'running') clearInterval(timerTick);
+            }, 250);
+        }
+
+        function renderTimer() {
+            const ms = timerRemainingMs();
+            const clock = fmtClock(ms);
+            const total = timer.minutes * 60000;
+            const isCinny = currentKid === 'Cinny';
+            const accent = isCinny ? '#f43f5e' : '#3b82f6';
+
+            const display = document.getElementById('timer-display');
+            if (!display) return;
+            display.textContent = clock;
+            const ring = document.getElementById('timer-ring');
+            ring.style.strokeDashoffset = String(RING_LEN * (1 - ms / total));
+            ring.style.stroke = timer.status === 'running' && ms < 5 * 60000 ? '#f59e0b' : accent;
+
+            const labels = { idle: '準備上課', running: '上課中…', paused: '已暫停', done: '下課囉！🔔' };
+            document.getElementById('timer-state-label').textContent = labels[timer.status];
+
+            const mainBtn = document.getElementById('timer-main-btn');
+            mainBtn.textContent = timer.status === 'running' ? '⏸ 暫停' : timer.status === 'paused' ? '▶ 繼續' : '▶ 開始上課';
+            mainBtn.className = `card-bounce py-3.5 rounded-2xl text-white font-black text-base shadow-md ${timer.status === 'running' ? 'bg-slate-700 shadow-slate-200' : (isCinny ? 'bg-rose-500 shadow-rose-200' : 'bg-blue-500 shadow-blue-200')}`;
+
+            const locked = timer.status === 'running' || timer.status === 'paused';
+            [30, 60].forEach(m => {
+                const b = document.getElementById(`timer-opt-${m}`);
+                const on = timer.minutes === m;
+                b.className = `flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${on ? `bg-white shadow-md ${isCinny ? 'text-pink-600' : 'text-blue-600'}` : 'text-slate-500'} ${locked && !on ? 'opacity-40' : ''}`;
+            });
+
+            // Floating pill stays on screen on every other tab while a lesson is in progress
+            const float = document.getElementById('timer-float');
+            const showFloat = (timer.status === 'running' || timer.status === 'paused') && currentTab !== 'timer';
+            float.classList.toggle('hidden', !showFloat);
+            float.classList.toggle('flex', showFloat);
+            document.getElementById('timer-float-text').textContent = clock;
+            document.getElementById('timer-float-label').textContent = timer.status === 'paused' ? '已暫停' : '上課中';
+            document.getElementById('timer-float-icon').textContent = timer.status === 'paused' ? '⏸' : '⏰';
+
+            document.title = timer.status === 'running' ? `⏰ ${clock} 上課中` : 'Cinny & Lucas 家教打卡器';
+            updateAwakeStatus();
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible') return;
+            if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+            if (timer.status === 'running') {
+                if (timerRemainingMs() <= 0) finishTimer(true);
+                else { acquireWakeLock(); startTimerTick(); }
+            }
+            renderTimer();
+        });
+
+        function initTimer() {
+            if (timer.status === 'running') {
+                if (timerRemainingMs() <= 0) {
+                    // Ended while the page was closed: show the result without a surprise bell
+                    timer.status = 'done';
+                    timer.remainingMs = 0;
+                    saveTimer();
+                } else {
+                    startTimerTick();
+                    // Wake lock / audio need a tap after a reload; the first tap anywhere re-arms them
+                    const rearm = () => { ensureAudio(); acquireWakeLock(); };
+                    document.addEventListener('pointerdown', rearm, { once: true });
+                }
+            }
+            renderTimer();
+        }
+
         // Toast Helper
         let toastTimer = null;
         function showToast(msg) {
@@ -1304,6 +1612,7 @@
 
         // Start App on Window Load
         window.addEventListener('DOMContentLoaded', () => {
+            initTimer();
             initCloudSync();
         });
     </script>
