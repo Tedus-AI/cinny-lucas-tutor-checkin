@@ -1,5 +1,4 @@
 const origin = 'https://tedus-ai.github.io';
-const encoder = new TextEncoder();
 
 export default {
   async fetch(request, env) {
@@ -8,13 +7,8 @@ export default {
     const json = (value, status = 200) => Response.json(value, {status, headers});
     if (new URL(request.url).pathname !== '/api/sync') return json({error:'not_found'},404);
     if (request.method === 'OPTIONS') {
-      return new Response(null,{status:204,headers:{...headers,'Access-Control-Allow-Methods':'GET, PUT, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type'}});
+      return new Response(null,{status:204,headers:{...headers,'Access-Control-Allow-Methods':'GET, PUT, OPTIONS','Access-Control-Allow-Headers':'Content-Type'}});
     }
-    const supplied = request.headers.get('Authorization') || '';
-    if (!env.TUTOR_KEY_HASH) return json({error:'unconfigured'},503);
-    const a = await crypto.subtle.digest('SHA-256',encoder.encode(supplied));
-    const b = Uint8Array.from(env.TUTOR_KEY_HASH.match(/../g), byte => parseInt(byte,16));
-    if (!crypto.subtle.timingSafeEqual(a,b)) return json({error:'unauthorized'},401);
     try {
       if (request.method === 'GET') {
         const row = await env.DB.prepare('SELECT payload, revision FROM family_state WHERE id=1').first();
