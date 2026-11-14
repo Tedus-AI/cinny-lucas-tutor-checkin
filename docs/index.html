@@ -697,7 +697,9 @@
         // ==========================================
         const endpoint = 'https://cinny-lucas-tutor-checkin.tedus-ai-games.workers.dev/api/sync';
         const escapeText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-        let accessKey = '', revision = 0, ready = false, conflict = false, cloudConnected = false, hasPendingSave = false;
+        let accessKey = '';
+        try { accessKey = localStorage.getItem('tutorCloudAccessKey') || ''; } catch {}
+        let revision = 0, ready = false, conflict = false, cloudConnected = false, hasPendingSave = false;
         let saveQueue = Promise.resolve();
         let cloudDialog, reconnecting = false;
 
@@ -716,17 +718,24 @@
             if (!cloudDialog) {
                 cloudDialog = document.createElement('dialog');
                 cloudDialog.className = 'm-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl border-0 p-6 shadow-2xl backdrop:bg-slate-900/60';
-                cloudDialog.innerHTML = '<form class="space-y-4"><div class="text-3xl">☁️</div><h2 class="text-xl font-black text-slate-800">Cloudflare 連線狀態</h2><p class="text-sm text-slate-600" data-cloud-message></p><label class="block space-y-1 text-sm font-bold text-slate-700" data-key-label>家用存取碼<input class="mt-1 w-full rounded-xl border border-slate-300 p-3" type="password" required autocomplete="current-password"></label><p class="text-sm text-rose-600" role="status"></p><button type="submit" class="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white">連線並載入</button><button type="button" data-load-latest class="hidden w-full rounded-xl bg-slate-100 p-3 font-bold text-slate-700">載入雲端最新資料</button></form>';
+                cloudDialog.innerHTML = '<form class="space-y-4"><div class="text-3xl">☁️</div><h2 class="text-xl font-black text-slate-800">Cloudflare 連線狀態</h2><p class="text-sm text-slate-600" data-cloud-message></p><label class="block space-y-1 text-sm font-bold text-slate-700" data-key-label>家用存取碼<input class="mt-1 w-full rounded-xl border border-slate-300 p-3" type="password" required autocomplete="current-password"></label><label class="flex items-start gap-2 text-xs text-slate-500"><input type="checkbox" data-remember checked class="mt-0.5"><span>記住此裝置，下次自動檢查連線（授權碼保存在本機瀏覽器）</span></label><p class="text-sm text-rose-600" role="status"></p><button type="submit" class="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white">連線並載入</button><button type="button" data-load-latest class="hidden w-full rounded-xl bg-slate-100 p-3 font-bold text-slate-700">載入雲端最新資料</button></form>';
                 document.body.append(cloudDialog);
                 cloudDialog.addEventListener('cancel', event => event.preventDefault());
                 cloudDialog.querySelector('form').onsubmit = connectToCloud;
                 cloudDialog.querySelector('[data-load-latest]').onclick = () => connectToCloud(null, true);
+                cloudDialog.querySelector('[data-remember]').onchange = event => {
+                    try {
+                        localStorage.setItem('tutorRememberCloudKey', String(event.target.checked));
+                        if (!event.target.checked) localStorage.removeItem('tutorCloudAccessKey');
+                    } catch {}
+                };
             }
             cloudDialog.querySelector('[data-cloud-message]').textContent = message;
             cloudDialog.querySelector('[role="status"]').textContent = '';
             cloudDialog.querySelector('[data-load-latest]').classList.add('hidden');
             const input = cloudDialog.querySelector('input');
             input.value = '';
+            try { cloudDialog.querySelector('[data-remember]').checked = localStorage.getItem('tutorRememberCloudKey') !== 'false'; } catch {}
             cloudDialog.querySelector('[data-key-label]').classList.toggle('hidden', !!accessKey);
             cloudDialog.querySelector('button[type="submit"]').textContent = accessKey ? '立即重新連線' : '輸入存取碼並連線';
             if (!cloudDialog.open) cloudDialog.showModal();
@@ -748,6 +757,12 @@
                 const saved = await sync('GET');
                 const wasReady = ready;
                 const revisionChanged = wasReady && saved.revision !== revision;
+                try {
+                    const remember = cloudDialog.querySelector('[data-remember]').checked;
+                    localStorage.setItem('tutorRememberCloudKey', String(remember));
+                    if (remember) localStorage.setItem('tutorCloudAccessKey', accessKey);
+                    else localStorage.removeItem('tutorCloudAccessKey');
+                } catch {}
                 cloudConnected = true;
                 if (!wasReady || loadLatest) {
                     if (saved.state) appState = saved.state;
@@ -774,6 +789,7 @@
                 cloudConnected = false;
                 if (error.status === 401) {
                     accessKey = '';
+                    try { localStorage.removeItem('tutorCloudAccessKey'); } catch {}
                     cloudDialog.querySelector('[data-key-label]').classList.remove('hidden');
                     input.value = '';
                     message.textContent = '存取碼無效，請重新輸入家用存取碼連線。';
@@ -793,7 +809,12 @@
 
         function initCloudSync() {
             renderAll();
-            openCloudDialog('每次開啟 APP 都會檢查資料庫。請輸入家用存取碼以連線並載入最新紀錄。');
+            if (accessKey) {
+                openCloudDialog('正在使用本機授權碼自動檢查 Cloudflare 資料庫連線。');
+                connectToCloud();
+            } else {
+                openCloudDialog('每次開啟 APP 都會檢查資料庫。請輸入家用存取碼以連線並載入最新紀錄。');
+            }
         }
 
         window.reconnectCloud = () => openCloudDialog(cloudConnected ? '再次檢查 Cloudflare 資料庫連線。' : 'Cloudflare 資料庫目前未連線，請重新連線。');
@@ -832,7 +853,10 @@
                         cloudDialog.querySelector('[data-load-latest]').classList.remove('hidden');
                     } else {
                         cloudConnected = false;
-                        if (error.status === 401) accessKey = '';
+                        if (error.status === 401) {
+                            accessKey = '';
+                            try { localStorage.removeItem('tutorCloudAccessKey'); } catch {}
+                        }
                         updateSyncIndicator('尚未儲存，Cloudflare 連線中斷');
                         openCloudDialog(error.status === 401 ? '存取碼已失效，請重新輸入家用存取碼以連線並同步。' : '家庭紀錄尚未同步到 Cloudflare。請檢查網路後按「重新連線」；連線恢復後會重試儲存。');
                     }
