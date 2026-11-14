@@ -356,7 +356,7 @@
                 <!-- Full Activity Stream -->
                 <div class="bg-white rounded-3xl p-5 shadow-md border border-slate-100">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-sm font-black text-slate-800">📊 近期所有打卡與異動紀錄</h3>
+                        <div><h3 class="text-sm font-black text-slate-800">📊 近期所有打卡與異動紀錄</h3><p class="mt-1 text-[11px] text-slate-500">點擊日期可直接跳到該日的出缺勤設定</p></div>
                         <button onclick="exportDataJSON()" class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg hover:bg-indigo-100">
                             <i class="fa-solid fa-download mr-1"></i>匯出備份
                         </button>
@@ -1200,7 +1200,7 @@
                 };
                 return `
                     <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                        <div class="text-xs font-black text-slate-700">${dKey}</div>
+                        <button type="button" onclick="selectHistoryDate('${dKey}')" aria-label="選擇 ${dKey} 並開啟當日出缺勤設定" title="開啟這天的出缺勤設定" class="shrink-0 text-xs font-black text-indigo-700 underline decoration-dotted underline-offset-4 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded">${dKey}</button>
                         <div class="flex flex-wrap gap-1.5 justify-end">
                             ${renderPill('eng')}
                             ${renderPill('math')}
@@ -1209,6 +1209,13 @@
                 `;
             }).join('');
         }
+
+        window.selectHistoryDate = function(dateKey) {
+            const picker = document.getElementById('history-date-picker');
+            picker.value = dateKey;
+            renderHistoryDateEditor();
+            document.getElementById('history-date-editor').scrollIntoView({behavior: 'smooth', block: 'center'});
+        };
 
         window.renderHistoryDateEditor = function() {
             const picker = document.getElementById('history-date-picker');
