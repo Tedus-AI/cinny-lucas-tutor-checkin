@@ -380,7 +380,7 @@
                         </div>
                     </div>
 
-<p id="cloud-status">正在連線雲端…</p><button class="rounded-xl bg-orange-500 p-3 text-white" onclick="saveStateToCloud()">重新儲存</button>
+<p id="cloud-status" role="status">啟動時會檢查 Cloudflare 資料庫連線。</p><div class="flex flex-wrap gap-2"><button class="rounded-xl bg-sky-500 p-3 text-white" onclick="reconnectCloud()">重新連線</button><button class="rounded-xl bg-orange-500 p-3 text-white" onclick="saveStateToCloud()">重新儲存</button></div>
                 </div>
             </div>
 
@@ -697,13 +697,14 @@
         // ==========================================
         const endpoint = 'https://cinny-lucas-tutor-checkin.tedus-ai-games.workers.dev/api/sync';
         const escapeText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-        let revision = 0, ready = false, conflict = false;
+        let accessKey = '', revision = 0, ready = false, conflict = false, cloudConnected = false, hasPendingSave = false;
         let saveQueue = Promise.resolve();
+        let cloudDialog, reconnecting = false;
 
         async function sync(method, data) {
             const response = await fetch(endpoint, {
                 method,
-                headers: data ? {'Content-Type':'application/json'} : {},
+                headers: {Authorization: 'Bearer ' + accessKey, ...(data ? {'Content-Type':'application/json'} : {})},
                 body: data ? JSON.stringify(data) : undefined,
                 signal: AbortSignal.timeout(15000)
             });
@@ -711,37 +712,130 @@
             return response.json();
         }
 
-        async function initCloudSync() {
-            updateSyncIndicator('正在連線雲端…');
+        function openCloudDialog(message = '啟動時正在檢查 Cloudflare 資料庫連線。') {
+            if (!cloudDialog) {
+                cloudDialog = document.createElement('dialog');
+                cloudDialog.className = 'm-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl border-0 p-6 shadow-2xl backdrop:bg-slate-900/60';
+                cloudDialog.innerHTML = '<form class="space-y-4"><div class="text-3xl">☁️</div><h2 class="text-xl font-black text-slate-800">Cloudflare 連線狀態</h2><p class="text-sm text-slate-600" data-cloud-message></p><label class="block space-y-1 text-sm font-bold text-slate-700" data-key-label>家用存取碼<input class="mt-1 w-full rounded-xl border border-slate-300 p-3" type="password" required autocomplete="current-password"></label><p class="text-sm text-rose-600" role="status"></p><button type="submit" class="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white">連線並載入</button><button type="button" data-load-latest class="hidden w-full rounded-xl bg-slate-100 p-3 font-bold text-slate-700">載入雲端最新資料</button></form>';
+                document.body.append(cloudDialog);
+                cloudDialog.addEventListener('cancel', event => event.preventDefault());
+                cloudDialog.querySelector('form').onsubmit = connectToCloud;
+                cloudDialog.querySelector('[data-load-latest]').onclick = () => connectToCloud(null, true);
+            }
+            cloudDialog.querySelector('[data-cloud-message]').textContent = message;
+            cloudDialog.querySelector('[role="status"]').textContent = '';
+            cloudDialog.querySelector('[data-load-latest]').classList.add('hidden');
+            const input = cloudDialog.querySelector('input');
+            input.value = '';
+            cloudDialog.querySelector('[data-key-label]').classList.toggle('hidden', !!accessKey);
+            cloudDialog.querySelector('button[type="submit"]').textContent = accessKey ? '立即重新連線' : '輸入存取碼並連線';
+            if (!cloudDialog.open) cloudDialog.showModal();
+        }
+
+        async function connectToCloud(event, loadLatest = false) {
+            event?.preventDefault();
+            if (reconnecting) return;
+            const input = cloudDialog.querySelector('input');
+            if (!accessKey) accessKey = input.value.trim();
+            if (!accessKey) { input.focus(); return; }
+            const button = cloudDialog.querySelector('button[type="submit"]');
+            const message = cloudDialog.querySelector('[data-cloud-message]');
+            const status = cloudDialog.querySelector('[role="status"]');
+            reconnecting = true;
+            button.disabled = true;
+            status.textContent = '正在測試資料庫連線…';
             try {
                 const saved = await sync('GET');
-                if (saved.state) appState = saved.state;
-                revision = saved.revision;
-                ready = true;
-                runSixDayAutoAbsenceCheck();
-                renderAll();
-                updateSyncIndicator('Cloudflare 已連線');
+                const wasReady = ready;
+                const revisionChanged = wasReady && saved.revision !== revision;
+                cloudConnected = true;
+                if (!wasReady || loadLatest) {
+                    if (saved.state) appState = saved.state;
+                    revision = saved.revision;
+                    ready = true;
+                    runSixDayAutoAbsenceCheck();
+                    renderAll();
+                    conflict = false;
+                } else if (revisionChanged) {
+                    conflict = true;
+                } else {
+                    revision = saved.revision;
+                    conflict = false;
+                }
+                updateSyncIndicator('Cloudflare 資料庫已連線');
+                cloudDialog.close();
+                if (revisionChanged && !loadLatest) {
+                    openCloudDialog('雲端資料有更新。為避免覆蓋其他裝置的紀錄，請先下載備份，再載入雲端最新資料。');
+                    cloudDialog.querySelector('[data-load-latest]').classList.remove('hidden');
+                } else if (wasReady && !loadLatest && hasPendingSave) {
+                    saveStateToCloud();
+                }
             } catch (error) {
-                renderAll();
-                updateSyncIndicator('無法連線雲端，請稍後重新整理');
+                cloudConnected = false;
+                if (error.status === 401) {
+                    accessKey = '';
+                    cloudDialog.querySelector('[data-key-label]').classList.remove('hidden');
+                    input.value = '';
+                    message.textContent = '存取碼無效，請重新輸入家用存取碼連線。';
+                    button.textContent = '重新授權並連線';
+                } else {
+                    message.textContent = '目前無法連上 Cloudflare 資料庫。請確認網路後按「重新連線」；家庭紀錄不會因此被刪除。';
+                    button.textContent = accessKey ? '再次嘗試連線' : '輸入存取碼後重試';
+                }
+                status.textContent = '';
+                updateSyncIndicator('Cloudflare 未連線，請重新連線');
+                if (!cloudDialog.open) cloudDialog.showModal();
+            } finally {
+                reconnecting = false;
+                button.disabled = false;
             }
         }
+
+        function initCloudSync() {
+            renderAll();
+            openCloudDialog('每次開啟 APP 都會檢查資料庫。請輸入家用存取碼以連線並載入最新紀錄。');
+        }
+
+        window.reconnectCloud = () => openCloudDialog(cloudConnected ? '再次檢查 Cloudflare 資料庫連線。' : 'Cloudflare 資料庫目前未連線，請重新連線。');
+        window.addEventListener('offline', () => {
+            cloudConnected = false;
+            updateSyncIndicator('裝置目前離線');
+            openCloudDialog('裝置目前沒有網路連線。恢復網路後按「重新連線」即可載入最新資料。');
+        });
+        window.addEventListener('online', () => {
+            if (!cloudConnected && accessKey && cloudDialog) connectToCloud();
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && ready && accessKey && !reconnecting && cloudDialog) connectToCloud();
+        });
 
         window.saveStateToCloud = saveStateToCloud;
         function saveStateToCloud() {
             renderAll();
             if (!ready || conflict) return;
             const state = JSON.parse(JSON.stringify(appState));
+            hasPendingSave = true;
             updateSyncIndicator('同步儲存中…');
             saveQueue = saveQueue.then(async () => {
                 if (conflict) return;
                 try {
                     const saved = await sync('PUT', {state, revision});
                     revision = saved.revision;
-                    updateSyncIndicator('Cloudflare 已儲存');
+                    hasPendingSave = JSON.stringify(appState) !== JSON.stringify(state);
+                    if (!hasPendingSave) updateSyncIndicator('Cloudflare 已儲存');
                 } catch (error) {
                     conflict = error.status === 409;
-                    updateSyncIndicator(conflict ? '另一台裝置已更新。請先下載備份，再重新整理頁面。' : '尚未儲存。請到雲端頁重新儲存。');
+                    if (conflict) {
+                        hasPendingSave = true;
+                        updateSyncIndicator('另一台裝置已更新。請先下載備份，再載入雲端資料。');
+                        openCloudDialog('雲端資料版本已變更，為了避免覆蓋其他裝置紀錄，請先下載備份，再載入雲端最新資料。');
+                        cloudDialog.querySelector('[data-load-latest]').classList.remove('hidden');
+                    } else {
+                        cloudConnected = false;
+                        if (error.status === 401) accessKey = '';
+                        updateSyncIndicator('尚未儲存，Cloudflare 連線中斷');
+                        openCloudDialog(error.status === 401 ? '存取碼已失效，請重新輸入家用存取碼以連線並同步。' : '家庭紀錄尚未同步到 Cloudflare。請檢查網路後按「重新連線」；連線恢復後會重試儲存。');
+                    }
                 }
             });
         }
@@ -749,7 +843,8 @@
         function updateSyncIndicator(text, ok) {
             const el = document.getElementById('sync-status-text');
             if (el) el.textContent = text;
-            document.getElementById('cloud-status').textContent = text;
+            const cloudStatus = document.getElementById('cloud-status');
+            if (cloudStatus) cloudStatus.textContent = text;
         }
 
         // ==========================================
